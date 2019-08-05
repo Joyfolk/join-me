@@ -20,6 +20,7 @@ object Main extends App {
         ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(settings.threads))
       val res = Await.result(startJob(settings), Duration.Inf)
       System.out.println(s"Resulting file: $res")
+      System.exit(0)
   }
 
   def sort(file: File)(implicit ec: ExecutionContext): Future[File] = Future {
