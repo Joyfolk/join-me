@@ -42,9 +42,8 @@ object ExternalSort {
     val reader = dataIO.reader(source)
     try {
       reader.iterator.foreach { d =>
-        if (!oracle.underMemoryPressure)
-          heap.enqueue(d)
-        else {
+        heap.enqueue(d)
+        if (oracle.underMemoryPressure) {
           val w = dumpHeap(heap)
           parts = parts :+ w
         }

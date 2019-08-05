@@ -1,5 +1,6 @@
 package join
 import java.io.{File, PrintWriter}
+import java.util.concurrent.atomic.AtomicInteger
 
 import org.scalatest.FunSuite
 
@@ -68,4 +69,30 @@ class ExternalSortTest extends FunSuite {
         Data(9L, "a9")
       ))
   }
+
+  test("splitSort: using oracle") {
+    implicit val oracle: Oracle = new Oracle {
+      val counter: AtomicInteger = new AtomicInteger(0)
+      override def underMemoryPressure: Boolean = counter.incrementAndGet() == 2
+    }
+
+    val f = File.createTempFile("test_", ".csv")
+    val w = new PrintWriter(f)
+    try {
+      w.println("5\tLondon")
+      w.println("4\tMoscow")
+      w.println("3\tParis")
+      w.println("42\tMagadan")
+    } finally w.close()
+    val res = ExternalSort.splitSort(f)
+    assert(res.size == 2)
+    var s = Source.fromFile(res(0).handle)
+    try {
+      assert(s.getLines().map(Row.fromString).toSeq == Seq(Data(4L, "Moscow"), Data(5L, "London")))
+      s.close()
+      s = Source.fromFile(res(1).handle)
+      assert(s.getLines().map(Row.fromString).toSeq == Seq(Data(3L, "Paris"), Data(42L, "Magadan")))
+    } finally s.close
+  }
+
 }
