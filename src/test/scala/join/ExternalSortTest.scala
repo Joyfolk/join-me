@@ -95,4 +95,30 @@ class ExternalSortTest extends FunSuite {
     } finally s.close
   }
 
+  test("externalSort: sort") {
+    implicit val oracle: Oracle = new Oracle {
+      val counter: AtomicInteger = new AtomicInteger(0)
+      override def underMemoryPressure: Boolean = counter.incrementAndGet() == 2
+    }
+
+    val f = File.createTempFile("test_", ".csv")
+    val w = new PrintWriter(f)
+    try {
+      w.println("5\tLondon")
+      w.println("4\tMoscow")
+      w.println("3\tParis")
+      w.println("42\tMagadan")
+    } finally w.close()
+    val t = File.createTempFile("test_res_", ".csv")
+    ExternalSort.sort(f, t)
+    val s = Source.fromFile(t)
+    try {
+      assert(
+        s.getLines().map(Row.fromString).toSeq == Seq(Data(3L, "Paris"),
+                                                      Data(4L, "Moscow"),
+                                                      Data(5L, "London"),
+                                                      Data(42L, "Magadan")))
+    } finally s.close
+
+  }
 }

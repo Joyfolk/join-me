@@ -23,6 +23,7 @@ object Main extends App {
   }
 
   def sort(file: File)(implicit ec: ExecutionContext): Future[File] = Future {
+    implicit val oracle: Oracle = Oracle()
     val target = File.createTempFile("sort_", ".csv")
     target.deleteOnExit()
     ExternalSort.sort(file, target)

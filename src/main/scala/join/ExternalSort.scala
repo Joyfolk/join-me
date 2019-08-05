@@ -3,10 +3,12 @@ import scala.collection.mutable
 
 object ExternalSort {
   implicit val ord: Ordering[Data] = Row.ordering[Data#Key, Data].reverse
-  implicit val oracle: Oracle = null
 
-  def sort[H](source: H, target: H)(implicit dataIO: DataIO[H]): Unit =
-    joinSort(splitSort(source), dataIO.dataWriter(target))
+  def sort[H](source: H, target: H)(implicit dataIO: DataIO[H], oracle: Oracle): Unit = {
+    val w = dataIO.dataWriter(target)
+    try joinSort(splitSort(source), w)
+    finally w.close()
+  }
 
   private[join] def joinSort[H](parts: IndexedSeq[DataReader[H]], output: DataWriter[H, Data])(
       implicit ordData: Ordering[Data]): Unit = {
