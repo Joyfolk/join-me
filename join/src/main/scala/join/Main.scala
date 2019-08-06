@@ -14,10 +14,13 @@ object Main extends App {
   Settings.read(args) match {
     case Left(error) =>
       System.err.println(s"Error: $error")
+      System.exit(-1)
     case Right(settings) =>
       System.out.println(s"Starting job: $settings")
       implicit val ec: ExecutionContext =
-        ExecutionContext.fromExecutorService(Executors.newFixedThreadPool(settings.threads))
+        ExecutionContext.fromExecutorService(
+          Executors.newFixedThreadPool(settings.threads)
+        )
       val res = Await.result(startJob(settings), Duration.Inf)
       System.out.println(s"Resulting file: $res")
       System.exit(0)
@@ -31,14 +34,18 @@ object Main extends App {
     target
   }
 
-  def join(left: File, right: File, joinType: JoinType)(implicit ec: ExecutionContext): Future[File] =
+  def join(left: File, right: File, joinType: JoinType)(
+    implicit ec: ExecutionContext
+  ): Future[File] =
     Future {
       val output = File.createTempFile("join_result_", ".csv")
       Sorted.join(left, right, joinType, output)
       output
     }
 
-  def startJob(settings: Settings)(implicit ec: ExecutionContext): Future[File] = {
+  def startJob(
+    settings: Settings
+  )(implicit ec: ExecutionContext): Future[File] = {
     val leftSorted = sort(settings.left)
     val rightSorted = sort(settings.right)
     for {

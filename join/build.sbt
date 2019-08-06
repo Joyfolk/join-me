@@ -2,7 +2,7 @@ lazy val root = (project in file("."))
   .settings(
     organization := "test",
     name := "join-me",
-    version := "0.10-SNAPSHOT",
+    version := "0.1-SNAPSHOT",
     scalaVersion := "2.12.8",
     scalacOptions ++= Seq(
       "-deprecation",
