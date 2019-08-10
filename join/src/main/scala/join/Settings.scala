@@ -5,7 +5,11 @@ import join.Settings.JoinType
 
 import scala.util.Try
 
-case class Settings(threads: Int, jointType: JoinType, left: File, right: File)
+case class Settings(threads: Int,
+                    jointType: JoinType,
+                    left: File,
+                    right: File,
+                    result: Option[File])
 
 object Settings {
   sealed trait JoinType
@@ -14,16 +18,27 @@ object Settings {
 
   lazy val defaultParallelism: Int = Runtime.getRuntime.availableProcessors()
 
-  def read(args: Array[String], defaultParallelism: Int = defaultParallelism): Either[String, Settings] = {
+  def read(
+    args: Array[String],
+    defaultParallelism: Int = defaultParallelism
+  ): Either[String, Settings] = {
     case class SettingsOpt(threads: Option[Int] = None,
                            joinType: Option[JoinType] = None,
                            left: Option[File] = None,
-                           right: Option[File] = None) {
+                           right: Option[File] = None,
+                           result: Option[File] = None) {
       def settings: Either[String, Settings] =
         for {
           l <- left.toRight("required option leftFile")
           r <- right.toRight("required option rightFile")
-        } yield Settings(threads.getOrElse(defaultParallelism), joinType.getOrElse(InnerJoin), l, r)
+        } yield
+          Settings(
+            threads.getOrElse(defaultParallelism),
+            joinType.getOrElse(InnerJoin),
+            l,
+            r,
+            result
+          )
     }
 
     def parseUnsigned(n: String): Either[String, Int] =
@@ -31,7 +46,8 @@ object Settings {
 
     def exist(filename: String): Boolean = new File(filename).exists()
 
-    def _read(parsed: SettingsOpt, args: List[String]): Either[String, SettingsOpt] = args match {
+    def _read(parsed: SettingsOpt,
+              args: List[String]): Either[String, SettingsOpt] = args match {
       case "--threads" :: n :: xs =>
         parseUnsigned(n)
           .map(threads => parsed.copy(threads = Some(threads)))
@@ -40,8 +56,16 @@ object Settings {
         _read(parsed.copy(joinType = Some(LeftJoin)), xs)
       case "--join-type" :: "inner" :: xs =>
         _read(parsed.copy(joinType = Some(InnerJoin)), xs)
-      case leftFile :: rightFile :: Nil if exist(leftFile) && exist(rightFile) =>
-        Right(parsed.copy(left = Some(new File(leftFile)), right = Some(new File(rightFile))))
+      case "--result" :: file :: xs =>
+        _read(parsed.copy(result = Some(new File(file))), xs)
+      case leftFile :: rightFile :: Nil
+          if exist(leftFile) && exist(rightFile) =>
+        Right(
+          parsed.copy(
+            left = Some(new File(leftFile)),
+            right = Some(new File(rightFile))
+          )
+        )
       case leftFile :: rightFile :: Nil =>
         Left(s"Join files not accessible: $leftFile, $rightFile")
       case unknown :: _ =>
@@ -49,7 +73,7 @@ object Settings {
       case Nil =>
         Left(
           "Usage: [--threads <threadCount> [= availableProcessors()]] [--join-type inner|left [= inner]] " +
-            "leftFile rightFile"
+            "[--result resultFile] leftFile rightFile"
         )
     }
 

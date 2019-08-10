@@ -6,6 +6,7 @@ import join.Settings.JoinType
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.util.{Failure, Success, Try}
 
 object Main extends App {
   implicit val dataIO: FileIO = new FileIO
@@ -17,13 +18,20 @@ object Main extends App {
       System.exit(-1)
     case Right(settings) =>
       System.out.println(s"Starting job: $settings")
+      val executor = Executors.newFixedThreadPool(settings.threads)
       implicit val ec: ExecutionContext =
-        ExecutionContext.fromExecutorService(
-          Executors.newFixedThreadPool(settings.threads)
-        )
+        ExecutionContext.fromExecutorService(executor)
       val res = Await.result(startJob(settings), Duration.Inf)
-      System.out.println(s"Resulting file: $res")
-      System.exit(0)
+      executor.shutdown()
+      res match {
+        case Failure(ex) =>
+          System.err.println(s"Internal error: ${ex.getMessage}")
+          ex.printStackTrace(System.err)
+          System.exit(-2)
+        case Success(file) =>
+          System.out.println(s"Resulting file: $file")
+          System.exit(0)
+      }
   }
 
   def sort(file: File)(implicit ec: ExecutionContext): Future[File] = Future {
@@ -34,24 +42,25 @@ object Main extends App {
     target
   }
 
-  def join(left: File, right: File, joinType: JoinType)(
+  def join(left: File, right: File, joinType: JoinType, output: File)(
     implicit ec: ExecutionContext
-  ): Future[File] =
+  ): Future[Try[File]] =
     Future {
-      val output = File.createTempFile("join_result_", ".csv")
-      Sorted.join(left, right, joinType, output)
-      output
+      Sorted.join(left, right, joinType, output).map(_ => output)
     }
 
   def startJob(
     settings: Settings
-  )(implicit ec: ExecutionContext): Future[File] = {
+  )(implicit ec: ExecutionContext): Future[Try[File]] = {
     val leftSorted = sort(settings.left)
     val rightSorted = sort(settings.right)
     for {
       l <- leftSorted
       r <- rightSorted
-      j <- join(l, r, settings.jointType)
+      output = settings.result.getOrElse(
+        File.createTempFile("join_result_", ".csv")
+      )
+      j <- join(l, r, settings.jointType, output)
     } yield j
   }
 }

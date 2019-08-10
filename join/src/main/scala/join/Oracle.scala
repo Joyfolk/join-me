@@ -1,14 +1,15 @@
 package join
-import scala.ref.SoftReference
 
 trait Oracle {
   def underMemoryPressure: Boolean
 }
 
 object Oracle {
+  private[this] val runtime: Runtime = Runtime.getRuntime
+  val maxMemory: Long = runtime.maxMemory()
 
   def apply(): Oracle = new Oracle() {
-    val softReference: SoftReference[Object] = new SoftReference[Object](new Object)
-    override def underMemoryPressure: Boolean = softReference.underlying.get == null
+    override def underMemoryPressure: Boolean =
+      runtime.freeMemory() < maxMemory / 5
   }
 }

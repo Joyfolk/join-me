@@ -31,10 +31,7 @@ object Main extends App {
         .option("delimiter", "\t")
         .schema(
           StructType(
-            Array(
-              StructField("id", LongType, nullable = false),
-              StructField("left", StringType, nullable = false)
-            )
+            Array(StructField("id", LongType), StructField("left", StringType))
           )
         )
         .csv(settings.left.getCanonicalPath)
@@ -44,10 +41,7 @@ object Main extends App {
         .option("delimiter", "\t")
         .schema(
           StructType(
-            Array(
-              StructField("id", LongType, nullable = false),
-              StructField("right", StringType, nullable = false)
-            )
+            Array(StructField("id", LongType), StructField("right", StringType))
           )
         )
         .csv(settings.right.getCanonicalPath)
@@ -60,6 +54,8 @@ object Main extends App {
         .write
         .option("head", "false")
         .option("delimiter", "\t")
+        .option("nullValue", null)
+        .option("treatEmptyValuesAsNulls", "false")
         .csv("/tmp/spark-result")
 
       log.info("Completed")
